@@ -18,8 +18,18 @@ def cast_to_type(type_abbrev, val):
         return val
 
 
+def override_config(overrides, config):
+    for i in range(len(overrides) // 3):
+        key, type_abbrev, val = overrides[i * 3 : (i + 1) * 3]
+        config[key] = cast_to_type(type_abbrev, val)
+
+
 def take_action(args):
     if args.action == "train":
+        train(args.train_config)
+    elif args.action == "check":
+        # Check verifies that the model compiles by training for one epoch
+        override_config(["epochs", "i", 1], args.train_config)
         train(args.train_config)
 
 
@@ -45,11 +55,9 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
+print(args)
 
 if args.override:
-    for i in range(len(args.override) // 3):
-        key, type_abbrev, val = args.override[i * 3 : (i + 1) * 3]
-        args.train_config[key] = cast_to_type(type_abbrev, val)
-
+    override_config(args.override, args.train_config)
 
 take_action(args)

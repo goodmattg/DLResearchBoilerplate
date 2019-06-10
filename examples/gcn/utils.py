@@ -14,55 +14,43 @@ from scipy.sparse.linalg.eigen.arpack import eigsh
 # Base Utilities (standard to boilerplate repository)
 
 
-def load_pickle_file(filepath, encoding=None):
-    """Load pickle file"""
+def load_file(filepath, load_func, **kwargs):
     try:
         print("Loading data file from: {0}".format(filepath))
-        with file_io.FileIO(filepath, mode="rb") as stream:
-            if encoding:
-                return pkl.load(stream, encoding=encoding)
-            else:
-                return pkl.load(stream)
-    except NotFoundError as _:
+        return load_func(filepath, **kwargs)
+    except NotFoundError as e:
         print("Data file not found: {0}".format(filepath))
-        return
-    except Exception as _:
+        exit(2)
+    except Exception as e:
         print("Unable to load data file: {0}".format(filepath))
-        return
+        exit(3)
 
 
-def load_index_file(filepath):
+def pickle_loader(filepath, encoding=None):
+    """Load pickle file"""
+    with file_io.FileIO(filepath, mode="rb") as stream:
+        if encoding:
+            return pkl.load(stream, encoding=encoding)
+        else:
+            return pkl.load(stream)
+
+
+def index_loader(filepath):
     """Parse index file."""
     index = []
-    try:
-        print("Loading data file from: {0}".format(filepath))
-        with file_io.FileIO(filepath, mode="r") as stream:
-            for line in stream:
-                index.append(int(line.strip()))
-            return index
-    except NotFoundError as _:
-        print("Data file not found: {0}".format(filepath))
-        return
-    except Exception as _:
-        print("Unable to load data file: {0}".format(filepath))
-        return
+    with file_io.FileIO(filepath, mode="r") as stream:
+        for line in stream:
+            index.append(int(line.strip()))
+        return index
 
 
-def load_yaml_file(filepath, use_dotmap=True):
+def yaml_loader(filepath, use_dotmap=True):
     """Load a yaml file into a dictionary. Optionally wrap with DotMap"""
-    try:
-        print("Loading configuration file from: {0}".format(filepath))
-        with file_io.FileIO(filepath, mode="r") as stream:
-            if use_dotmap:
-                return DotMap(yaml.load(stream))
-            else:
-                return yaml.load(stream)
-    except NotFoundError as _:
-        print("Configuration file not found: {0}".format(filepath))
-        return
-    except Exception as _:
-        print("Unable to load configuration file: {0}".format(filepath))
-        return
+    with file_io.FileIO(filepath, mode="r") as stream:
+        if use_dotmap:
+            return DotMap(yaml.load(stream))
+        else:
+            return yaml.load(stream)
 
 
 def load_training_config_file(filename):
@@ -70,19 +58,19 @@ def load_training_config_file(filename):
     config_file_path = os.path.join(
         os.path.dirname(__file__), "config", "{0}.yaml".format(filename)
     )
-    return load_yaml_file(config_file_path)
+    return load_file(config_file_path, yaml_loader)
 
 
 def load_data_index_file(filename):
     """Load an index data file"""
     data_file_path = os.path.join(os.path.dirname(__file__), "data", filename)
-    return load_index_file(data_file_path)
+    return load_file(data_file_path, index_loader)
 
 
 def load_data_pickle_file(filename, encoding=None):
     """Load a data pickle file"""
     data_file_path = os.path.join(os.path.dirname(__file__), "data", filename)
-    return load_pickle_file(data_file_path, encoding=encoding)
+    return load_file(data_file_path, pickle_loader, encoding=encoding)
 
 
 # Custom Utilities for GCN example
