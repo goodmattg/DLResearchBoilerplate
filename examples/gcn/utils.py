@@ -13,72 +13,68 @@ from scipy.sparse.linalg.eigen.arpack import eigsh
 
 # Base Utilities (standard to boilerplate repository)
 
-def load_pickle_file(filepath, encoding=None):
-    """Load pickle file"""
+
+def load_file(filepath, load_func, **kwargs):
     try:
         print("Loading data file from: {0}".format(filepath))
-        with file_io.FileIO(filepath, mode='rb') as stream:
-            if encoding:
-                return pkl.load(stream, encoding=encoding)
-            else:
-                return pkl.load(stream)
-    except NotFoundError as _:
+        return load_func(filepath, **kwargs)
+    except NotFoundError as e:
         print("Data file not found: {0}".format(filepath))
-        return
-    except Exception as _:
+        exit(2)
+    except Exception as e:
         print("Unable to load data file: {0}".format(filepath))
-        return
+        exit(3)
 
 
-def load_index_file(filepath):
+def pickle_loader(filepath, encoding=None):
+    """Load pickle file"""
+    with file_io.FileIO(filepath, mode="rb") as stream:
+        if encoding:
+            return pkl.load(stream, encoding=encoding)
+        else:
+            return pkl.load(stream)
+
+
+def index_loader(filepath):
     """Parse index file."""
     index = []
-    try:
-        print("Loading data file from: {0}".format(filepath))
-        with file_io.FileIO(filepath, mode='r') as stream:
-            for line in stream:
-                index.append(int(line.strip()))
-            return index
-    except NotFoundError as _:
-        print("Data file not found: {0}".format(filepath))
-        return
-    except Exception as _:
-        print("Unable to load data file: {0}".format(filepath))
-        return
+    with file_io.FileIO(filepath, mode="r") as stream:
+        for line in stream:
+            index.append(int(line.strip()))
+        return index
 
 
-def load_yaml_file(filepath, use_dotmap=True):
+def yaml_loader(filepath, use_dotmap=True):
     """Load a yaml file into a dictionary. Optionally wrap with DotMap"""
-    try:
-        print("Loading configuration file from: {0}".format(filepath))
-        with file_io.FileIO(filepath, mode='r') as stream:
-            if use_dotmap:
-                return DotMap(yaml.load(stream))
-            else:
-                return yaml.load(stream)
-    except NotFoundError as _:
-        print("Configuration file not found: {0}".format(filepath))
-        return
-    except Exception as _:
-        print("Unable to load configuration file: {0}".format(filepath))
-        return
+    with file_io.FileIO(filepath, mode="r") as stream:
+        if use_dotmap:
+            return DotMap(yaml.load(stream))
+        else:
+            return yaml.load(stream)
+
 
 def load_training_config_file(filename):
     """Load a training configuration yaml file into a DotMap dictionary"""
-    config_file_path = os.path.join(os.path.dirname(__file__), "config", "{0}.yaml".format(filename))
-    return load_yaml_file(config_file_path)
+    config_file_path = os.path.join(
+        os.path.dirname(__file__), "config", "{0}.yaml".format(filename)
+    )
+    return load_file(config_file_path, yaml_loader)
+
 
 def load_data_index_file(filename):
     """Load an index data file"""
     data_file_path = os.path.join(os.path.dirname(__file__), "data", filename)
-    return load_index_file(data_file_path)
+    return load_file(data_file_path, index_loader)
+
 
 def load_data_pickle_file(filename, encoding=None):
     """Load a data pickle file"""
     data_file_path = os.path.join(os.path.dirname(__file__), "data", filename)
-    return load_pickle_file(data_file_path, encoding=encoding)
+    return load_file(data_file_path, pickle_loader, encoding=encoding)
+
 
 # Custom Utilities for GCN example
+
 
 def parse_index_file(filename):
     """Parse index file."""
@@ -115,7 +111,7 @@ def load_data(dataset_str):
     :param dataset_str: Dataset name
     :return: All data input files loaded (as well the training/test data).
     """
-    names = ['x', 'y', 'tx', 'ty', 'allx', 'ally', 'graph']
+    names = ["x", "y", "tx", "ty", "allx", "ally", "graph"]
     objects = []
     for i in range(len(names)):
         filename = "ind.{}.{}".format(dataset_str, names[i])
@@ -126,15 +122,15 @@ def load_data(dataset_str):
     test_idx_reorder = load_data_index_file("ind.{}.test.index".format(dataset_str))
     test_idx_range = np.sort(test_idx_reorder)
 
-    if dataset_str == 'citeseer':
+    if dataset_str == "citeseer":
         # Fix citeseer dataset (there are some isolated nodes in the graph)
         # Find isolated nodes, add them as zero-vecs into the right position
-        test_idx_range_full = range(min(test_idx_reorder), max(test_idx_reorder)+1)
+        test_idx_range_full = range(min(test_idx_reorder), max(test_idx_reorder) + 1)
         tx_extended = sp.lil_matrix((len(test_idx_range_full), x.shape[1]))
-        tx_extended[test_idx_range-min(test_idx_range), :] = tx
+        tx_extended[test_idx_range - min(test_idx_range), :] = tx
         tx = tx_extended
         ty_extended = np.zeros((len(test_idx_range_full), y.shape[1]))
-        ty_extended[test_idx_range-min(test_idx_range), :] = ty
+        ty_extended[test_idx_range - min(test_idx_range), :] = ty
         ty = ty_extended
 
     features = sp.vstack((allx, tx)).tolil()
@@ -146,7 +142,7 @@ def load_data(dataset_str):
 
     idx_test = test_idx_range.tolist()
     idx_train = range(len(y))
-    idx_val = range(len(y), len(y)+500)
+    idx_val = range(len(y), len(y) + 500)
 
     train_mask = sample_mask(idx_train, labels.shape[0])
     val_mask = sample_mask(idx_val, labels.shape[0])
@@ -164,6 +160,7 @@ def load_data(dataset_str):
 
 def sparse_to_tuple(sparse_mx):
     """Convert sparse matrix to tuple representation."""
+
     def to_tuple(mx):
         if not sp.isspmatrix_coo(mx):
             mx = mx.tocoo()
@@ -185,7 +182,7 @@ def preprocess_features(features):
     """Row-normalize feature matrix and convert to tuple representation"""
     rowsum = np.array(features.sum(1))
     r_inv = np.power(rowsum, -1).flatten()
-    r_inv[np.isinf(r_inv)] = 0.
+    r_inv[np.isinf(r_inv)] = 0.0
     r_mat_inv = sp.diags(r_inv)
     features = r_mat_inv.dot(features)
     return sparse_to_tuple(features)
@@ -196,7 +193,7 @@ def normalize_adj(adj):
     adj = sp.coo_matrix(adj)
     rowsum = np.array(adj.sum(1))
     d_inv_sqrt = np.power(rowsum, -0.5).flatten()
-    d_inv_sqrt[np.isinf(d_inv_sqrt)] = 0.
+    d_inv_sqrt[np.isinf(d_inv_sqrt)] = 0.0
     d_mat_inv_sqrt = sp.diags(d_inv_sqrt)
     return adj.dot(d_mat_inv_sqrt).transpose().dot(d_mat_inv_sqrt).tocoo()
 
@@ -210,11 +207,13 @@ def preprocess_adj(adj):
 def construct_feed_dict(features, support, labels, labels_mask, placeholders):
     """Construct feed dictionary."""
     feed_dict = dict()
-    feed_dict.update({placeholders['labels']: labels})
-    feed_dict.update({placeholders['labels_mask']: labels_mask})
-    feed_dict.update({placeholders['features']: features})
-    feed_dict.update({placeholders['support'][i]: support[i] for i in range(len(support))})
-    feed_dict.update({placeholders['num_features_nonzero']: features[1].shape})
+    feed_dict.update({placeholders["labels"]: labels})
+    feed_dict.update({placeholders["labels_mask"]: labels_mask})
+    feed_dict.update({placeholders["features"]: features})
+    feed_dict.update(
+        {placeholders["support"][i]: support[i] for i in range(len(support))}
+    )
+    feed_dict.update({placeholders["num_features_nonzero"]: features[1].shape})
     return feed_dict
 
 
@@ -224,8 +223,8 @@ def chebyshev_polynomials(adj, k):
 
     adj_normalized = normalize_adj(adj)
     laplacian = sp.eye(adj.shape[0]) - adj_normalized
-    largest_eigval, _ = eigsh(laplacian, 1, which='LM')
-    scaled_laplacian = (2. / largest_eigval[0]) * laplacian - sp.eye(adj.shape[0])
+    largest_eigval, _ = eigsh(laplacian, 1, which="LM")
+    scaled_laplacian = (2.0 / largest_eigval[0]) * laplacian - sp.eye(adj.shape[0])
 
     t_k = list()
     t_k.append(sp.eye(adj.shape[0]))
@@ -235,7 +234,7 @@ def chebyshev_polynomials(adj, k):
         s_lap = sp.csr_matrix(scaled_lap, copy=True)
         return 2 * s_lap.dot(t_k_minus_one) - t_k_minus_two
 
-    for i in range(2, k+1):
+    for i in range(2, k + 1):
         t_k.append(chebyshev_recurrence(t_k[-1], t_k[-2], scaled_laplacian))
 
     return sparse_to_tuple(t_k)
