@@ -5,6 +5,7 @@ import numpy as np
 import pickle as pkl
 import networkx as nx
 import scipy.sparse as sp
+import tensorflow as tf
 
 from dotmap import DotMap
 from tensorflow.python.lib.io import file_io

@@ -55,10 +55,9 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
+print(args)
 
 if args.override:
     override_config(args.override, args.train_config)
-
-print(args)
 
 take_action(args)
