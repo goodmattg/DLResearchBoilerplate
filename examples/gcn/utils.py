@@ -180,13 +180,13 @@ def sparse_matrix_to_sparse_tensor(sparse_mx):
 
 
 def preprocess_features(features):
-    """Row-normalize feature matrix and convert to tuple representation"""
+    """Row-normalize feature matrix"""
     rowsum = np.array(features.sum(1))
     r_inv = np.power(rowsum, -1).flatten()
     r_inv[np.isinf(r_inv)] = 0.0
     r_mat_inv = sp.diags(r_inv)
     features = r_mat_inv.dot(features)
-    return sparse_matrix_to_sparse_tensor(features)
+    return features
 
 
 def normalize_adj(adj):

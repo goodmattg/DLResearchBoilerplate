@@ -45,30 +45,51 @@ def train(config):
     # Some preprocessing
     features = preprocess_features(features)
 
-    if config.model == "gcn":
+    train_features = sparse_matrix_to_sparse_tensor(
+        preprocess_features(features[train_mask])
+    )
+    val_features = sparse_matrix_to_sparse_tensor(
+        preprocess_features(features[val_mask])
+    )
+    test_features = sparse_matrix_to_sparse_tensor(
+        preprocess_features(features[test_mask])
+    )
+
+    if config.model.name == "gcn":
         # Support is sparse representation of normalized adjacency matrix (coords, values)
         # TODO: consider renaming "support"
         support = [preprocess_adj(adj)]
         num_supports = 1
         model_constructor = GCN_Keras
-    elif config.model == "gcn_cheby":
-        support = chebyshev_polynomials(adj, config.max_degree)
-        num_supports = 1 + config.max_degree
+    elif config.model.name == "gcn_cheby":
+        support = chebyshev_polynomials(adj, config.model.max_degree)
+        num_supports = 1 + config.model.max_degree
         model_constructor = GCN
-    elif config.model == "dense":
+    elif config.model.name == "dense":
         # TODO: should be able to use Keras OOTB
         support = [preprocess_adj(adj)]  # Not used
         num_supports = 1
         model_constructor = MLP
     else:
-        raise ValueError("Invalid argument for model: {0}".format(config.model))
+        raise ValueError("Invalid argument for model: {0}".format(config.model.name))
 
     model = model_constructor(
-        input_dim=features.shape[1],
+        input_dim=train_features.shape[1],
         output_dim=y_train.shape[1],
         supports=support,
-        num_features_nonzero=features.values.shape,
+        num_features_nonzero=train_features.values.shape,
+        config=config.model,
     )
+
+    model.fit(
+        x=train_features,
+        y=tf.boolean_mask(y_train, train_mask),
+        epochs=config.training.epochs,
+        validation_data=(val_features, tf.boolean_mask(y_val, val_mask)),
+        verbose=2,
+    )
+
+    # TODO: APPLY MASKING BEFOREHAND before trying to fit everything (i.e. train)
 
     # Define placeholders
     # placeholders = {

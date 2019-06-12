@@ -114,7 +114,6 @@ class GraphConvolutionKeras(Layer):
         supports,
         num_features_nonzero,
         dropout=0.0,
-        sparse_inputs=False,
         activation=tf.nn.relu,
         use_bias=False,
         featureless=False,
@@ -126,7 +125,6 @@ class GraphConvolutionKeras(Layer):
         self.num_features_nonzero = num_features_nonzero
         self.dropout = dropout
         self.activation = activation
-        self.sparse_inputs = sparse_inputs
         self.featureless = featureless
         self.use_bias = use_bias
 
@@ -136,14 +134,6 @@ class GraphConvolutionKeras(Layer):
         super(GraphConvolutionKeras, self).__init__(**kwargs)
 
     def build(self, input_shape):
-
-        # with tf.compat.v1.variable_scope(self.name + "_vars"):
-        #     for i in range(len(self.support)):
-        #         self.vars["weights_" + str(i)] = glorot(
-        #             [input_dim, output_dim], name="weights_" + str(i)
-        #         )
-        #     if self.bias:
-        #         self.vars["bias"] = zeros([output_dim], name="bias")
 
         # Create a trainable weight variable for this layer for each support
         self.weights_per_support = [
@@ -160,12 +150,6 @@ class GraphConvolutionKeras(Layer):
             self.bias = self.add_weight(
                 name="bias", shape=output_dim, initializer="zeros", trainable=False
             )
-        # self.kernel = self.add_weight(
-        #     name="kernel",
-        #     shape=(len(self.support), self.input_dim, self.output_dim),
-        #     initializer=keras.initializers.glorot_uniform(seed=None),
-        #     trainable=True,
-        # )
 
         # Create trainable bias variable for this layer.
         super(GraphConvolutionKeras, self).build(
@@ -180,7 +164,7 @@ class GraphConvolutionKeras(Layer):
         else:
             x = tf.nn.dropout(x, 1 - (1 - self.dropout))
 
-        # convolve
+        # Convolve
         supports = list()
         for i in range(len(self.supports)):
             weight_name = "weight_support_{}".format(i)
@@ -193,7 +177,7 @@ class GraphConvolutionKeras(Layer):
             supports.append(support)
         output = tf.add_n(supports)
 
-        # bias
+        # Bias
         if self.use_bias:
             output += self.bias
 
