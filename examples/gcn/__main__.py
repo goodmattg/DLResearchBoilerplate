@@ -51,7 +51,7 @@ parser.add_argument(
     "--override",
     "-o",
     nargs="*",
-    help="Override key value pairs in training configuration file",
+    help="Override key value pairs in training configuration file for ad-hoc testing",
 )
 
 args = parser.parse_args()

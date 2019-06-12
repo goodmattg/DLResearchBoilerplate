@@ -5,6 +5,7 @@ import numpy as np
 import pickle as pkl
 import networkx as nx
 import scipy.sparse as sp
+import tensorflow as tf
 
 from dotmap import DotMap
 from tensorflow.python.lib.io import file_io
@@ -158,24 +159,24 @@ def load_data(dataset_str):
     return adj, features, y_train, y_val, y_test, train_mask, val_mask, test_mask
 
 
-def sparse_to_tuple(sparse_mx):
+def sparse_matrix_to_sparse_tensor(sparse_mx):
     """Convert sparse matrix to tuple representation."""
 
-    def to_tuple(mx):
+    def to_sparse_tensor(mx):
         if not sp.isspmatrix_coo(mx):
             mx = mx.tocoo()
         coords = np.vstack((mx.row, mx.col)).transpose()
         values = mx.data
         shape = mx.shape
-        return coords, values, shape
+        return tf.SparseTensor(coords, values, shape)
 
     if isinstance(sparse_mx, list):
         for i in range(len(sparse_mx)):
-            sparse_mx[i] = to_tuple(sparse_mx[i])
+            sparse_mx[i] = to_sparse_tensor(sparse_mx[i])
     else:
-        sparse_mx = to_tuple(sparse_mx)
+        sparse_mx = to_sparse_tensor(sparse_mx)
 
-    return sparse_mx
+    return tf.cast(sparse_mx, tf.float32)
 
 
 def preprocess_features(features):
@@ -185,7 +186,7 @@ def preprocess_features(features):
     r_inv[np.isinf(r_inv)] = 0.0
     r_mat_inv = sp.diags(r_inv)
     features = r_mat_inv.dot(features)
-    return sparse_to_tuple(features)
+    return sparse_matrix_to_sparse_tensor(features)
 
 
 def normalize_adj(adj):
@@ -201,7 +202,7 @@ def normalize_adj(adj):
 def preprocess_adj(adj):
     """Preprocessing of adjacency matrix for simple GCN model and conversion to tuple representation."""
     adj_normalized = normalize_adj(adj + sp.eye(adj.shape[0]))
-    return sparse_to_tuple(adj_normalized)
+    return sparse_matrix_to_sparse_tensor(adj_normalized)
 
 
 def construct_feed_dict(features, support, labels, labels_mask, placeholders):
@@ -237,4 +238,4 @@ def chebyshev_polynomials(adj, k):
     for i in range(2, k + 1):
         t_k.append(chebyshev_recurrence(t_k[-1], t_k[-2], scaled_laplacian))
 
-    return sparse_to_tuple(t_k)
+    return sparse_matrix_to_sparse_tensor(t_k)
