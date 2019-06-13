@@ -66,42 +66,43 @@ class GCN(Model):
         return tf.nn.softmax(self.outputs)
 
 
-class GCN_Keras(Model):
-    def __init__(
-        self, input_dim, output_dim, supports, num_features_nonzero, config, **kwargs
-    ):
+def GCN_Keras(input_dim, output_dim, supports, num_features_nonzero, config, **kwargs):
 
-        model = Sequential()
+    model = Sequential()
 
-        model.add(
-            GraphConvolutionKeras(
-                input_dim=input_dim,
-                output_dim=config.hidden1,
-                supports=supports,
-                num_features_nonzero=num_features_nonzero,
-                activation=tf.nn.relu,
-                dropout=config.dropout,
-            )
+    model.add(Input(batch_shape=input_dim, sparse=True))
+
+    model.add(
+        GraphConvolutionKeras(
+            output_dim=config.hidden1,
+            supports=supports,
+            num_features_nonzero=num_features_nonzero,
+            activation=tf.nn.relu,
+            dropout=config.dropout,
         )
+    )
 
-        model.add(
-            GraphConvolutionKeras(
-                input_dim=config.hidden1,
-                output_dim=output_dim,
-                supports=supports,
-                num_features_nonzero=num_features_nonzero,
-                activation=lambda x: x,
-                dropout=config.dropout,
-            )
+    # TODO: MISSING REGULARIZATION OF FIRST LAYER
+    # model.add(regularizers.l2(config.weight_decay))
+
+    # TODO: Take Dropout out of GCN layer
+
+    model.add(
+        GraphConvolutionKeras(
+            output_dim=output_dim,
+            supports=supports,
+            num_features_nonzero=num_features_nonzero,
+            activation=tf.identity,
+            dropout=config.dropout,
         )
+    )
 
-        model.add(Dense(output_dim, activation="softmax"))
+    model.add(Dense(output_dim, activation="softmax"))
 
-        # model = Model(inputs=inputs, outputs=predictions)
+    model.compile(
+        loss="categorical_crossentropy",
+        metrics=["accuracy"],
+        optimizer=optimizers.Adam(lr=config.learning_rate),
+    )
 
-        model.compile(
-            loss="categorical_crossentropy",
-            metrics=["accuracy"],
-            kernel_regularizer=regularizers.l2(config.weight_decay),
-            optimizer="adam",
-        )
+    return model

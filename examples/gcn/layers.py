@@ -4,19 +4,6 @@ from inits import *
 from tensorflow.keras.layers import Layer, Dense
 from tensorflow.keras.initializers import glorot_uniform
 
-# global unique layer ID dictionary for layer name assignment
-_LAYER_UIDS = {}
-
-
-def get_layer_uid(layer_name=""):
-    """Helper function, assigns unique layer IDs."""
-    if layer_name not in _LAYER_UIDS:
-        _LAYER_UIDS[layer_name] = 1
-        return 1
-    else:
-        _LAYER_UIDS[layer_name] += 1
-        return _LAYER_UIDS[layer_name]
-
 
 def sparse_dropout(x, keep_prob, noise_shape):
     """Dropout for sparse tensors."""
@@ -27,12 +14,12 @@ def sparse_dropout(x, keep_prob, noise_shape):
     return pre_out * (1.0 / keep_prob)
 
 
-def dot(x, y):
+def dot(a, b):
     """Wrapper for tf.matmul (sparse vs dense)."""
-    if isinstance(x, tf.SparseTensor):
-        res = tf.sparse.sparse_dense_matmul(x, y)
+    if isinstance(a, tf.SparseTensor):
+        res = tf.sparse.sparse_dense_matmul(a, b)
     else:
-        res = tf.matmul(x, y)
+        res = tf.matmul(a, b)
     return res
 
 
@@ -109,7 +96,6 @@ class GraphConvolution(Layer):
 class GraphConvolutionKeras(Layer):
     def __init__(
         self,
-        input_dim,
         output_dim,
         supports,
         num_features_nonzero,
@@ -119,7 +105,6 @@ class GraphConvolutionKeras(Layer):
         featureless=False,
         **kwargs
     ):
-        self.input_dim = input_dim
         self.output_dim = output_dim
         self.supports = supports
         self.num_features_nonzero = num_features_nonzero
@@ -130,31 +115,31 @@ class GraphConvolutionKeras(Layer):
 
         # helper variable for sparse dropout
         # self.num_features_nonzero = placeholders["num_features_nonzero"]
-
         super(GraphConvolutionKeras, self).__init__(**kwargs)
 
     def build(self, input_shape):
 
         # Create a trainable weight variable for this layer for each support
+        print("INPUT SHAPE")
+        print("{} x {}".format(input_shape[1], self.output_dim))
+
         self.weights_per_support = [
             self.add_weight(
                 name="weight_support_{}".format(i),
-                shape=(self.input_dim, self.output_dim),
-                initializer=glorot_uniform(seed=None),
+                shape=(input_shape[1], self.output_dim),
+                initializer=glorot_uniform(seed=None),  # TODO: Use global random seed
                 trainable=True,
             )
             for i in range(len(self.supports))
         ]
 
+        # Optionally create trainable bias variable for this layer.
         if self.use_bias:
             self.bias = self.add_weight(
                 name="bias", shape=output_dim, initializer="zeros", trainable=False
             )
 
-        # Create trainable bias variable for this layer.
-        super(GraphConvolutionKeras, self).build(
-            input_shape
-        )  # Be sure to call this at the end
+        super(GraphConvolutionKeras, self).build(input_shape)
 
     def call(self, x):
 

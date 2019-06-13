@@ -44,16 +44,8 @@ def train(config):
 
     # Some preprocessing
     features = preprocess_features(features)
-
-    train_features = sparse_matrix_to_sparse_tensor(
-        preprocess_features(features[train_mask])
-    )
-    val_features = sparse_matrix_to_sparse_tensor(
-        preprocess_features(features[val_mask])
-    )
-    test_features = sparse_matrix_to_sparse_tensor(
-        preprocess_features(features[test_mask])
-    )
+    norm_feat = preprocess_features(features)
+    sparse_norm_feat = sparse_matrix_to_sparse_tensor(norm_feat)
 
     if config.model.name == "gcn":
         # Support is sparse representation of normalized adjacency matrix (coords, values)
@@ -74,20 +66,27 @@ def train(config):
         raise ValueError("Invalid argument for model: {0}".format(config.model.name))
 
     model = model_constructor(
-        input_dim=train_features.shape[1],
+        input_dim=sparse_norm_feat.shape,
         output_dim=y_train.shape[1],
         supports=support,
-        num_features_nonzero=train_features.values.shape,
+        num_features_nonzero=sparse_norm_feat.values.shape,
         config=config.model,
     )
 
-    model.fit(
-        x=train_features,
-        y=tf.boolean_mask(y_train, train_mask),
-        epochs=config.training.epochs,
-        validation_data=(val_features, tf.boolean_mask(y_val, val_mask)),
-        verbose=2,
-    )
+    # model.fit(
+    #     x=sparse_norm_feat,
+    #     # y=tf.boolean_mask(y_train, train_mask),
+    #     y=y_train,
+    #     epochs=config.training.epochs,
+    #     validation_data=(
+    #         tf.sparse.to_dense(sparse_norm_feat),
+    #         tf.boolean_mask(y_val, val_mask),
+    #     ),
+    #     verbose=2,
+    # )
+
+    for epoch in range(config.training.epochs):
+        print(model.train_on_batch(sparse_norm_feat, y_train))
 
     # TODO: APPLY MASKING BEFOREHAND before trying to fit everything (i.e. train)
 

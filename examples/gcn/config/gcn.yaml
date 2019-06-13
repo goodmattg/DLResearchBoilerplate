@@ -3,7 +3,7 @@ dataset: cora
 model:
   name: gcn
   learning_rate: 0.01
-  hidden1: 16
+  hidden1: 32
   dropout: 0.5
   weight_decay: 0.0005
   max_degree: 3
