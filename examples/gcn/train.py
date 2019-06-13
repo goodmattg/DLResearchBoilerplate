@@ -65,6 +65,10 @@ def train(config):
     else:
         raise ValueError("Invalid argument for model: {0}".format(config.model.name))
 
+    # import pdb
+
+    # pdb.set_trace()
+
     model = model_constructor(
         input_dim=sparse_norm_feat.shape,
         output_dim=y_train.shape[1],
@@ -73,20 +77,24 @@ def train(config):
         config=config.model,
     )
 
-    # model.fit(
-    #     x=sparse_norm_feat,
-    #     # y=tf.boolean_mask(y_train, train_mask),
-    #     y=y_train,
-    #     epochs=config.training.epochs,
-    #     validation_data=(
-    #         tf.sparse.to_dense(sparse_norm_feat),
     #         tf.boolean_mask(y_val, val_mask),
-    #     ),
-    #     verbose=2,
-    # )
 
+    print(model.metrics_names)
     for epoch in range(config.training.epochs):
-        print(model.train_on_batch(sparse_norm_feat, y_train))
+        t = time.time()
+
+        train_loss, train_acc = model.train_on_batch(
+            sparse_norm_feat, np.column_stack((y_train, train_mask))
+        )
+        val_loss, val_acc = model.test_on_batch(
+            sparse_norm_feat, np.column_stack((y_val, val_mask))
+        )
+
+        print(
+            "Epoch: {:04d}, train_loss= {:.5f}, train_acc={:.5f}, val_loss={:.5f}, val_acc={:.5f}, time={:.5f}".format(
+                (epoch + 1), train_loss, train_acc, val_loss, val_acc, (time.time() - t)
+            )
+        )
 
     # TODO: APPLY MASKING BEFOREHAND before trying to fit everything (i.e. train)
 

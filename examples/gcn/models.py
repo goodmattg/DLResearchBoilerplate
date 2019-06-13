@@ -66,21 +66,44 @@ class GCN(Model):
         return tf.nn.softmax(self.outputs)
 
 
+# Define custom loss
+def masked_loss(layer):
+
+    # Create a loss function that adds the MSE loss to the mean of all squared activations of a specific layer
+    def _loss(y_true, y_pred):
+
+        print("Y_TRUE")
+        print(y_true.shape)
+
+        loss = 0
+
+        # # Weight decay loss
+        # for weight in layer.get_weights():
+        #     loss += config.weight_decay * tf.nn.l2_loss(weight)
+
+        # Cross entropy error
+        loss += masked_softmax_cross_entropy(y_true[:, :-1], y_pred, y_true[:, -1])
+        return loss
+
+    # Return a function
+    return _loss
+
+
 def GCN_Keras(input_dim, output_dim, supports, num_features_nonzero, config, **kwargs):
 
     model = Sequential()
 
     model.add(Input(batch_shape=input_dim, sparse=True))
 
-    model.add(
-        GraphConvolutionKeras(
-            output_dim=config.hidden1,
-            supports=supports,
-            num_features_nonzero=num_features_nonzero,
-            activation=tf.nn.relu,
-            dropout=config.dropout,
-        )
+    layer1 = GraphConvolutionKeras(
+        output_dim=config.hidden1,
+        supports=supports,
+        num_features_nonzero=num_features_nonzero,
+        activation=tf.nn.relu,
+        dropout=config.dropout,
     )
+
+    model.add(layer1)
 
     # TODO: MISSING REGULARIZATION OF FIRST LAYER
     # model.add(regularizers.l2(config.weight_decay))
@@ -100,7 +123,7 @@ def GCN_Keras(input_dim, output_dim, supports, num_features_nonzero, config, **k
     model.add(Dense(output_dim, activation="softmax"))
 
     model.compile(
-        loss="categorical_crossentropy",
+        loss=masked_loss(layer1),
         metrics=["accuracy"],
         optimizer=optimizers.Adam(lr=config.learning_rate),
     )
