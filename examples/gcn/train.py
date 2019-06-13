@@ -7,29 +7,6 @@ from utils import *
 from evaluate import evaluate
 from models import GCN, GCN_Keras
 
-from absl import app
-from absl import flags
-
-
-# def train_step(source_seq, target_seq_in, target_seq_out, en_initial_states):
-#     with tf.GradientTape() as tape:
-#         en_outputs = encoder(source_seq, en_initial_states)
-#         en_states = en_outputs[1:]
-#         de_states = en_states
-
-#         de_outputs = decoder(target_seq_in, de_states)
-#         logits = de_outputs[0]
-#         loss = loss_func(target_seq_out, logits)
-
-#     variables = encoder.trainable_variables + decoder.trainable_variables
-#     gradients = tape.gradient(loss, variables)
-#     optimizer.apply_gradients(zip(gradients, variables))
-
-#     return loss
-
-# def training_step(model, inputs):
-#     with tf.GradientTape() as tape:
-
 
 def train(config):
 
@@ -42,8 +19,7 @@ def train(config):
         config.dataset
     )
 
-    # Some preprocessing
-    features = preprocess_features(features)
+    # Feature preprocessing
     norm_feat = preprocess_features(features)
     sparse_norm_feat = sparse_matrix_to_sparse_tensor(norm_feat)
 
@@ -77,8 +53,6 @@ def train(config):
         config=config.model,
     )
 
-    #         tf.boolean_mask(y_val, val_mask),
-
     print(model.metrics_names)
     for epoch in range(config.training.epochs):
         t = time.time()
@@ -97,22 +71,6 @@ def train(config):
         )
 
     # TODO: APPLY MASKING BEFOREHAND before trying to fit everything (i.e. train)
-
-    # Define placeholders
-    # placeholders = {
-    #     "support": [
-    #         tf.compat.v1.sparse_placeholder(tf.float32) for _ in range(num_supports)
-    #     ],
-    #     "features": tf.compat.v1.sparse_placeholder(
-    #         tf.float32, shape=tf.constant(features[2], dtype=tf.int64)
-    #     ),
-    #     "labels": tf.compat.v1.placeholder(tf.float32, shape=(None, y_train.shape[1])),
-    #     "labels_mask": tf.compat.v1.placeholder(tf.int32),
-    #     "dropout": tf.compat.v1.placeholder_with_default(0.0, shape=()),
-    #     "num_features_nonzero": tf.compat.v1.placeholder(
-    #         tf.int32
-    #     ),  # helper variable for sparse dropout
-    # }
 
     # Create model
     # model = model_constructor(placeholders, input_dim=features[2][1], logging=True)

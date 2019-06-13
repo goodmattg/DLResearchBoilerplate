@@ -2,7 +2,7 @@ from layers import *
 from metrics import *
 
 from tensorflow.keras import optimizers, regularizers, Sequential
-from tensorflow.keras.layers import Input
+from tensorflow.keras.layers import Input, Activation
 from tensorflow.keras.models import Model
 
 
@@ -67,13 +67,8 @@ class GCN(Model):
 
 
 # Define custom loss
-def masked_loss(layer):
-
-    # Create a loss function that adds the MSE loss to the mean of all squared activations of a specific layer
+def masked_loss(self):
     def _loss(y_true, y_pred):
-
-        print("Y_TRUE")
-        print(y_true.shape)
 
         loss = 0
 
@@ -89,21 +84,25 @@ def masked_loss(layer):
     return _loss
 
 
+def _masked_accuracy(y_true, y_pred):
+    return masked_accuracy(y_true[:, :-1], y_pred, y_true[:, -1])
+
+
 def GCN_Keras(input_dim, output_dim, supports, num_features_nonzero, config, **kwargs):
 
     model = Sequential()
 
     model.add(Input(batch_shape=input_dim, sparse=True))
 
-    layer1 = GraphConvolutionKeras(
-        output_dim=config.hidden1,
-        supports=supports,
-        num_features_nonzero=num_features_nonzero,
-        activation=tf.nn.relu,
-        dropout=config.dropout,
+    model.add(
+        GraphConvolutionKeras(
+            output_dim=config.hidden1,
+            supports=supports,
+            num_features_nonzero=num_features_nonzero,
+            activation=tf.nn.relu,
+            dropout=config.dropout,
+        )
     )
-
-    model.add(layer1)
 
     # TODO: MISSING REGULARIZATION OF FIRST LAYER
     # model.add(regularizers.l2(config.weight_decay))
@@ -115,16 +114,16 @@ def GCN_Keras(input_dim, output_dim, supports, num_features_nonzero, config, **k
             output_dim=output_dim,
             supports=supports,
             num_features_nonzero=num_features_nonzero,
-            activation=tf.identity,
+            activation=tf.nn.softmax,
             dropout=config.dropout,
         )
     )
 
-    model.add(Dense(output_dim, activation="softmax"))
+    # model.add(Dense(output_dim, activation="softmax"))
 
     model.compile(
-        loss=masked_loss(layer1),
-        metrics=["accuracy"],
+        loss=masked_loss(model),
+        metrics=[_masked_accuracy],
         optimizer=optimizers.Adam(lr=config.learning_rate),
     )
 

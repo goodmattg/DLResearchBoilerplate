@@ -8,5 +8,5 @@ model:
   weight_decay: 0.0005
   max_degree: 3
 training:
-  epochs: 10
+  epochs: 100
   early_stopping: 10
