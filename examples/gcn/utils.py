@@ -1,3 +1,4 @@
+import operator
 import os
 import sys
 import yaml
@@ -7,15 +8,50 @@ import networkx as nx
 import scipy.sparse as sp
 import tensorflow as tf
 
+from functools import reduce
 from dotmap import DotMap
 from tensorflow.python.lib.io import file_io
 from tensorflow.python.framework.errors_impl import NotFoundError
 from scipy.sparse.linalg.eigen.arpack import eigsh
 
+
+def get_from_dict(dictionary, key_list):
+    """Get value from dictionary with arbitrary depth via descending list of keys."""
+    return reduce(operator.getitem, key_list, dictionary)
+
+
+def set_in_dict(dictionary, key_list, value):
+    """Set value from dictionary with arbitrary depth via descending list of keys."""
+    get_from_dict(dictionary, key_list[:-1])[key_list[-1]] = value
+
+
+def cast_to_type(type_abbrev, val):
+    """Convert string input value to explicitly denoted type. Types are as follows:
+    "f" -> float
+    "i" -> integer
+    "b" -> boolean
+    "s" -> string
+    """
+    if type_abbrev == "f":
+        return float(val)
+    elif type_abbrev == "i":
+        return int(val)
+    elif type_abbrev == "b":
+        return val.lower() in ("yes", "true", "t", "1")
+    else:
+        return val
+
+
+def override_dotmap(overrides, config):
+    """Override DotMap dictionary with explicitly typed values."""
+    for i in range(len(overrides) // 3):
+        key, type_abbrev, val = overrides[i * 3 : (i + 1) * 3]
+        set_in_dict(config, key.split("."), cast_to_type(type_abbrev, val))
+
+
 # Base Utilities (standard to boilerplate repository)
-
-
 def load_file(filepath, load_func, **kwargs):
+    """Generic file loader with missing/error messages."""
     try:
         print("Loading data file from: {0}".format(filepath))
         return load_func(filepath, **kwargs)
@@ -46,7 +82,7 @@ def index_loader(filepath):
 
 
 def yaml_loader(filepath, use_dotmap=True):
-    """Load a yaml file into a dictionary. Optionally wrap with DotMap"""
+    """Load a yaml file into a dictionary. Optionally wrap with DotMap."""
     with file_io.FileIO(filepath, mode="r") as stream:
         if use_dotmap:
             return DotMap(yaml.load(stream))
@@ -55,7 +91,7 @@ def yaml_loader(filepath, use_dotmap=True):
 
 
 def load_training_config_file(filename):
-    """Load a training configuration yaml file into a DotMap dictionary"""
+    """Load a training configuration yaml file into a DotMap dictionary."""
     config_file_path = os.path.join(
         os.path.dirname(__file__), "config", "{0}.yaml".format(filename)
     )
@@ -63,13 +99,13 @@ def load_training_config_file(filename):
 
 
 def load_data_index_file(filename):
-    """Load an index data file"""
+    """Load an index data file/"""
     data_file_path = os.path.join(os.path.dirname(__file__), "data", filename)
     return load_file(data_file_path, index_loader)
 
 
 def load_data_pickle_file(filename, encoding=None):
-    """Load a data pickle file"""
+    """Load a data pickle file/"""
     data_file_path = os.path.join(os.path.dirname(__file__), "data", filename)
     return load_file(data_file_path, pickle_loader, encoding=encoding)
 
@@ -160,7 +196,7 @@ def load_data(dataset_str):
 
 
 def sparse_matrix_to_sparse_tensor(sparse_mx):
-    """Convert sparse matrix to tuple representation."""
+    """Convert sparse matrix to SparseTensor representation."""
 
     def to_sparse_tensor(mx):
         if not sp.isspmatrix_coo(mx):
@@ -172,11 +208,11 @@ def sparse_matrix_to_sparse_tensor(sparse_mx):
 
     if isinstance(sparse_mx, list):
         for i in range(len(sparse_mx)):
-            sparse_mx[i] = to_sparse_tensor(sparse_mx[i])
+            sparse_mx[i] = tf.cast(to_sparse_tensor(sparse_mx[i]), tf.float32)
     else:
-        sparse_mx = to_sparse_tensor(sparse_mx)
+        sparse_mx = tf.cast(to_sparse_tensor(sparse_mx), tf.float32)
 
-    return tf.cast(sparse_mx, tf.float32)
+    return sparse_mx
 
 
 def preprocess_features(features):
@@ -200,26 +236,13 @@ def normalize_adj(adj):
 
 
 def preprocess_adj(adj):
-    """Preprocessing of adjacency matrix for simple GCN model and conversion to tuple representation."""
+    """Preprocessing of adjacency matrix for simple GCN model and conversion to SparseTensor representation."""
     adj_normalized = normalize_adj(adj + sp.eye(adj.shape[0]))
     return sparse_matrix_to_sparse_tensor(adj_normalized)
 
 
-def construct_feed_dict(features, support, labels, labels_mask, placeholders):
-    """Construct feed dictionary."""
-    feed_dict = dict()
-    feed_dict.update({placeholders["labels"]: labels})
-    feed_dict.update({placeholders["labels_mask"]: labels_mask})
-    feed_dict.update({placeholders["features"]: features})
-    feed_dict.update(
-        {placeholders["support"][i]: support[i] for i in range(len(support))}
-    )
-    feed_dict.update({placeholders["num_features_nonzero"]: features[1].shape})
-    return feed_dict
-
-
 def chebyshev_polynomials(adj, k):
-    """Calculate Chebyshev polynomials up to order k. Return a list of sparse matrices (tuple representation)."""
+    """Calculate Chebyshev polynomials up to order k. Return a list of SparseTensors."""
     print("Calculating Chebyshev polynomials up to order {}...".format(k))
 
     adj_normalized = normalize_adj(adj)
