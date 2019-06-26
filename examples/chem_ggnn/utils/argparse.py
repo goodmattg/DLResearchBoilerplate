@@ -1,3 +1,10 @@
+import argparse
+import os
+import operator
+import sys
+from functools import reduce
+
+
 def get_from_dict(dictionary, key_list):
     """Get value from dictionary with arbitrary depth via descending list of keys."""
     return reduce(operator.getitem, key_list, dictionary)
@@ -34,24 +41,37 @@ def override_dotmap(overrides, config):
 
 def file_exists(prospective_file):
     """Check if the prospective file exists"""
-    if not os.path.exists(prospective_file):
-        raise argparse.ArgumentTypeError("File: '{0}' does not exist".format(prospective_file))
-    return prospective_file
+    file_path = os.path.join(
+        os.getcwd(), os.path.basename(sys.argv[0]), prospective_file
+    )
+    if not os.path.exists(file_path):
+        raise argparse.ArgumentTypeError("File: '{0}' does not exist".format(file_path))
+    return file_path
 
 
 def dir_exists_write_privileges(prospective_dir):
-    """Check if the prospective directory exists with write priveliges."""
-    if not os.path.isdir(prospective_dir):
-        raise argparse.ArgumentTypeError("Directory: '{0}' does not exist".format(prospective_dir))
-    elif not os.access(prospective_dir, os.W_OK):
-        raise argparse.ArgumentTypeError("Directory: '{0}' is not writable".format(prospective_dir))
-    return prospective_dir
+    """Check if the prospective directory exists with write privileges."""
+    dir_path = os.path.join(os.getcwd(), os.path.basename(sys.argv[0]), prospective_dir)
+    if not os.path.isdir(dir_path):
+        raise argparse.ArgumentTypeError(
+            "Directory: '{0}' does not exist".format(dir_path)
+        )
+    elif not os.access(dir_path, os.W_OK):
+        raise argparse.ArgumentTypeError(
+            "Directory: '{0}' is not writable".format(dir_path)
+        )
+    return dir_path
 
-   
+
 def dir_exists_read_privileges(prospective_dir):
-    """Check if the prospective directory exists with read priveliges."""
-    if not os.path.isdir(prospective_dir):
-        raise argparse.ArgumentTypeError("Directory: '{0}' does not exist".format(prospective_dir))
-    elif not os.access(prospective_dir, os.R_OK):
-        raise argparse.ArgumentTypeError("Directory: '{0}' is not readable".format(prospective_dir))
-    return prospective_dir
+    """Check if the prospective directory exists with read privileges."""
+    dir_path = os.path.join(os.getcwd(), os.path.basename(sys.argv[0]), prospective_dir)
+    if not os.path.isdir(dir_path):
+        raise argparse.ArgumentTypeError(
+            "Directory: '{0}' does not exist".format(dir_path)
+        )
+    elif not os.access(dir_path, os.R_OK):
+        raise argparse.ArgumentTypeError(
+            "Directory: '{0}' is not readable".format(dir_path)
+        )
+    return dir_path

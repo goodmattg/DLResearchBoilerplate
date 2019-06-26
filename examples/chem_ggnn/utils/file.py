@@ -1,16 +1,16 @@
 import argparse
-import operator
+
 import os
 import sys
 import yaml
 import pickle as pkl
 
 import warnings
+
 with warnings.catch_warnings():
-    warnings.filterwarnings("ignore",category=FutureWarning)
+    warnings.filterwarnings("ignore", category=FutureWarning)
     import tensorflow as tf
 
-from functools import reduce
 from dotmap import DotMap
 from tensorflow.python.lib.io import file_io
 from tensorflow.python.framework.errors_impl import NotFoundError
@@ -48,12 +48,15 @@ def yaml_loader(filepath, use_dotmap=True):
 
 def load_training_config_file(filename):
     """Load a training configuration yaml file into a DotMap dictionary."""
+    print("Loading training configuration file: {0}".format(filename))
     config_file_path = os.path.join(
-        os.path.dirname(__file__), filename)
+        os.getcwd(), os.path.basename(sys.argv[0]), filename
+    )
     return load_file(config_file_path, yaml_loader)
 
 
 def load_data_pickle_file(filename, encoding=None):
     """Load a data pickle file/"""
-    data_file_path = os.path.join(os.path.dirname(__file__), "data", filename)
+    print("Loading pickled data file: {0}".format(filename))
+    data_file_path = os.path.join(os.getcwd(), os.path.basename(sys.argv[0]), filename)
     return load_file(data_file_path, pickle_loader, encoding=encoding)
