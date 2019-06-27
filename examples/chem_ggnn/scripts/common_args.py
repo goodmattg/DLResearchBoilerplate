@@ -1,4 +1,4 @@
-import argparse
+from argparse import ArgumentParser
 
 from utils.file import load_training_config_file
 from utils.argparse import *
@@ -6,15 +6,20 @@ from utils.argparse import *
 AVAILABLE_ACTIONS = ["train", "check", "test", "evaluate"]
 
 
-def CommonArgParser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Interact with your research model")
+def add_common_arguments(parser: ArgumentParser) -> ArgumentParser:
 
-    core = parser.add_argument_group("Core arguments")
+    core = parser.add_argument_group("core arguments")
 
     core.add_argument(
         "action",
         choices=AVAILABLE_ACTIONS,
         help="Take an action with your model (e.g. 'train')",
+    )
+
+    core.add_argument(
+        "--model",
+        type=str,
+        help="Identifier of model to work with. Overrides config defined model",
     )
 
     core.add_argument(

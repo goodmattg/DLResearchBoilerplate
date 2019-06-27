@@ -20,38 +20,47 @@ class ChemModel(object):
         # Collect argument things:
         self.data_dir = args.data_dir
 
-        self.run_id = "_".join([time.strftime("%Y-%m-%d-%H-%M-%S"), str(os.getpid())])
-        log_dir = args.get("--log_dir") or "."
-        self.log_file = os.path.join(log_dir, "%s_log.json" % self.run_id)
-        self.best_model_file = os.path.join(
-            log_dir, "%s_model_best.pickle" % self.run_id
-        )
+        self.run_id = args.run_id
+        self.log_file = args.log_file
+        self.best_model_file = args.best_model_file
 
         # Collect parameters:
-        params = self.default_params()
-        config_file = args.get("--config-file")
-        if config_file is not None:
-            with open(config_file, "r") as f:
-                params.update(json.load(f))
-        config = args.get("--config")
-        if config is not None:
-            params.update(json.loads(config))
+        # I QUESTION THEIR USE OF THIS - I ALREADY MANDATE A CONFIGURATION FILE...
+
+        # params = self.default_params()
+        # config_file = args.get("--config-file")
+        # if config_file is not None:
+        #     with open(config_file, "r") as f:
+        #         params.update(json.load(f))
+        # config = args.get("--config")
+        # if config is not None:
+        #     params.update(json.loads(config))
+
+        # Store 'model' namespaced params from config
+        params = args.model
         self.params = params
-        with open(os.path.join(log_dir, "%s_params.json" % self.run_id), "w") as f:
+
+        with open(
+            os.path.join(args.log_dir, "{}_params.json".format(self.run_id)), "w"
+        ) as f:
             json.dump(params, f)
+
+        # with open(os.path.join(log_dir, "%s_params.json" % self.run_id), "w") as f:
+        #     json.dump(params, f)
         print(
-            "Run %s starting with following parameters:\n%s"
-            % (self.run_id, json.dumps(self.params))
+            "Run {} starting with following parameters:\n{}".format(
+                self.run_id, json.dumps(self.params)
+            )
         )
-        random.seed(params["random_seed"])
-        np.random.seed(params["random_seed"])
+        random.seed(args.random_seed)
+        np.random.seed(args.random_seed)
 
         # Load data:
         self.max_num_vertices = 0
         self.num_edge_types = 0
         self.annotation_size = 0
-        self.train_data = self.load_data(params["train_file"], is_training_data=True)
-        self.valid_data = self.load_data(params["valid_file"], is_training_data=False)
+        self.train_data = self.load_data(args.data.train_file, is_training_data=True)
+        self.valid_data = self.load_data(args.data.valid_file, is_training_data=False)
 
         # Build the actual model
         config = tf.ConfigProto()
@@ -59,7 +68,7 @@ class ChemModel(object):
         self.graph = tf.Graph()
         self.sess = tf.Session(graph=self.graph, config=config)
         with self.graph.as_default():
-            tf.set_random_seed(params["random_seed"])
+            tf.set_random_seed(args.random_seed)
             self.placeholders = {}
             self.weights = {}
             self.ops = {}
