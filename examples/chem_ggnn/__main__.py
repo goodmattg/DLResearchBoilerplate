@@ -4,6 +4,8 @@ import traceback
 import os
 import pdb
 
+from models import *
+
 from argparse import ArgumentParser, ArgumentTypeError
 from train import train
 from evaluate import evaluate
@@ -20,7 +22,7 @@ def take_action(args):
     # Constants should change depending on research structure
     # For single model project, can remove if/else and switch to plain instantiate
     if args.model == "ggnn-dense":
-        pass
+        model = ChemModel(args)
     else:
         raise (
             ArgumentTypeError(
